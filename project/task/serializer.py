@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from app.models import Task
+from task.models import Task
 
 class TaskSerializer(serializers.Serializer):
     id = serializers.IntegerField()
