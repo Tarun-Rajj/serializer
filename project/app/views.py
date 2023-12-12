@@ -1,5 +1,5 @@
 from django.http import Http404
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404
 from .models import Task
 from .serializer import TaskSerializer 
 from rest_framework.views import APIView
@@ -8,46 +8,43 @@ from rest_framework import status
 
 
 class TaskList(APIView):
-    def get(self, request, format=None):
-        tasks = Task.objects.all() # tasks contains a queryset which contain task object
-        serializer = TaskSerializer(tasks, many=True)        
-        return Response({"count": len(serializer.data),"data":serializer.data})
-    
-    def post(self, request, format=None):
-        serializer = TaskSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"msg":"Task Created Successfully","data":serializer.data}, status=201)
-        return Response(serializer.errors, status=400)
-    
-class TaskDetail(APIView):
-
-    def get_object_or_404(self, pk):
+    def get(self, request):
         try:
-            return Task.objects.get(pk=pk)
-        except Task.DoesNotExist:
-            raise Http404
-
+            tasks = Task.objects.all() # tasks contains a queryset which contain task object
+            serializer = TaskSerializer(tasks, many=True)        
+            return Response({"count": tasks.count(),"data":serializer.data})
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+    
+    def post(self, request):
+        serializer = TaskSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"msg":"Task Created Successfully","data":serializer.data}, status=201)
+   
+   
+class TaskDetail(APIView):
     def get(self, request, pk):
-        task_get = self.get_object_or_404(pk)
-        serializer = TaskSerializer(task_get)
-        return Response({"msg":"Get particular Task","data":serializer.data})
+        try:
+            task_get = get_object_or_404(Task, pk=pk)
+            serializer = TaskSerializer(task_get)
+            return Response({"msg":"Get particular Task","data":serializer.data})
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
     
     def put(self, request, pk):
-        try:
-            task_get= self.get_object_or_404(pk)
-            serializer = TaskSerializer(task_get, data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response({"msg":"Updated Successfully","data":serializer.data})
-            else:
-                return Response(serializer.error, status=400)
-        except Http404:
-            return Response({"Error":"Object not found"},status=404)
-        except Exception as e:
-            return Response({"msg": "An error occured", "error": str(e)}, status=500) 
+        task_get= get_object_or_404(Task, pk=pk)
+        serializer = TaskSerializer(task_get, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"msg":"Updated Successfully","data":serializer.data})
+
     
     def delete(self, request, pk):
-        task_get = self.get_object_or_404(pk)
-        task_get.delete()
-        return Response({"msg":"Task deleted Successfully"}, status = 201 )
+        try:
+            task_get = get_object_or_404(Task, pk=pk)
+            task_get.delete()
+            return Response({"msg":"Task deleted Successfully"}, status = 201 )
+        except Exception as e:
+            return Response({"msg":"Error in deleting the Task","error": str(e)}, status=500)
+   
